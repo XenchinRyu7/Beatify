@@ -3,6 +3,7 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../home/presentation/home_page.dart';
 import '../../library/presentation/library_page.dart';
+import '../../album/presentation/album_page.dart';
 import '../../settings/presentation/settings_page.dart';
 import '../../../widgets/mini_player.dart';
 
@@ -15,7 +16,7 @@ class RootPage extends StatefulWidget {
 
 class _RootPageState extends State<RootPage> {
   int _index = 0;
-  final _pages = const [HomePage(), LibraryPage(), SettingsPage()];
+  final _pages = const [HomePage(), LibraryPage(), AlbumPage(), SettingsPage()];
 
   @override
   Widget build(BuildContext context) {
@@ -32,6 +33,7 @@ class _RootPageState extends State<RootPage> {
         destinations: const [
           NavigationDestination(icon: Icon(PhosphorIconsLight.house), label: 'Home'),
           NavigationDestination(icon: Icon(PhosphorIconsLight.musicNote), label: 'Library'),
+          NavigationDestination(icon: Icon(PhosphorIconsLight.disc), label: 'Albums'),
           NavigationDestination(icon: Icon(PhosphorIconsLight.gear), label: 'Settings'),
         ],
         onDestinationSelected: (i) => setState(() => _index = i.clamp(0, _pages.length - 1)),

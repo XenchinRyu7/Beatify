@@ -182,6 +182,16 @@ class PlayerController extends Notifier<PlayerViewState> {
     state = state.copyWith(playlist: updated);
   }
 
+  void updateSong(Song updatedSong) {
+    final updated = state.playlist.map((s) {
+      if (s.id == updatedSong.id) {
+        return updatedSong;
+      }
+      return s;
+    }).toList();
+    state = state.copyWith(playlist: updated);
+  }
+
   void removeFromQueue(String songId) {
     final idx = state.playlist.indexWhere((s) => s.id == songId);
     if (idx == -1) return;

@@ -14,6 +14,28 @@ class Song {
     required this.url,
     this.audioId,
   });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'artist': artist,
+      'coverUrl': coverUrl,
+      'url': url,
+      'audioId': audioId,
+    };
+  }
+
+  factory Song.fromJson(Map<String, dynamic> json) {
+    return Song(
+      id: json['id'] as String,
+      title: json['title'] as String,
+      artist: json['artist'] as String,
+      coverUrl: json['coverUrl'] as String,
+      url: json['url'] as String,
+      audioId: json['audioId'] as int?,
+    );
+  }
 }
 
 
