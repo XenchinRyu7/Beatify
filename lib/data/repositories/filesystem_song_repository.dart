@@ -32,9 +32,10 @@ class FilesystemSongRepository implements SongRepository {
       final base = p.basenameWithoutExtension(f.path);
       final id = f.path.hashCode.toString();
       final artistOverride = await overrides.getArtistOverride(id);
+      final titleOverride = await overrides.getTitleOverride(id);
       result.add(Song(
         id: id,
-        title: base,
+        title: (titleOverride == null || titleOverride.isEmpty) ? base : titleOverride,
         artist: (artistOverride == null || artistOverride.isEmpty) ? 'Unknown' : artistOverride,
         coverUrl: '',
         url: 'file://${f.path}',

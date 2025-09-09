@@ -7,6 +7,7 @@ import '../domain/entities/song.dart';
 
 class AudioPlayerService {
   final AudioPlayer _player = AudioPlayer();
+  Timer? _sleepTimer;
 
   Stream<Duration> get positionStream => _player.positionStream;
   Stream<PlayerState> get playerStateStream => _player.playerStateStream;
@@ -27,6 +28,18 @@ class AudioPlayerService {
   Future<void> pause() => _player.pause();
   Future<void> seek(Duration position) => _player.seek(position);
   Future<void> dispose() => _player.dispose();
+
+  void scheduleSleep(Duration duration) {
+    _sleepTimer?.cancel();
+    _sleepTimer = Timer(duration, () async {
+      await _player.pause();
+    });
+  }
+
+  void cancelSleep() {
+    _sleepTimer?.cancel();
+    _sleepTimer = null;
+  }
 }
 
 

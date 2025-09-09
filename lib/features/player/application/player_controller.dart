@@ -63,11 +63,16 @@ class PlayerController extends Notifier<PlayerViewState> {
     _repo = ref.read(songRepositoryProvider);
 
     _audio.positionStream.listen((pos) => state = state.copyWith(position: pos));
-    _audio.playerStateStream.listen((playerState) {
+    _audio.playerStateStream.listen((playerState) async {
       final processing = playerState.processingState;
       final playing = playerState.playing;
       if (processing == ProcessingState.completed) {
-        state = state.copyWith(isPlaying: false, position: Duration.zero);
+        // Auto next when a track finishes
+        if (state.playlist.isNotEmpty) {
+          await next();
+        } else {
+          state = state.copyWith(isPlaying: false, position: Duration.zero);
+        }
       } else {
         state = state.copyWith(isPlaying: playing);
       }
@@ -81,6 +86,11 @@ class PlayerController extends Notifier<PlayerViewState> {
     final songs = await _repo.getAllSongs();
     state = state.copyWith(playlist: songs);
     return songs.length;
+  }
+
+  void setPlaylist(List<Song> songs, {int startIndex = 0}) {
+    state = state.copyWith(playlist: songs, currentIndex: null, position: Duration.zero, duration: null);
+    playAt(startIndex);
   }
 
   Future<void> playAt(int index) async {
@@ -153,6 +163,39 @@ class PlayerController extends Notifier<PlayerViewState> {
       return s;
     }).toList();
     state = state.copyWith(playlist: updated);
+  }
+
+  void updateTitle(String songId, String newTitle) {
+    final updated = state.playlist.map((s) {
+      if (s.id == songId) {
+        return Song(
+          id: s.id,
+          title: newTitle,
+          artist: s.artist,
+          coverUrl: s.coverUrl,
+          url: s.url,
+          audioId: s.audioId,
+        );
+      }
+      return s;
+    }).toList();
+    state = state.copyWith(playlist: updated);
+  }
+
+  void removeFromQueue(String songId) {
+    final idx = state.playlist.indexWhere((s) => s.id == songId);
+    if (idx == -1) return;
+    final list = List<Song>.from(state.playlist)..removeAt(idx);
+    int? newCurrent = state.currentIndex;
+    if (state.currentIndex != null) {
+      if (idx < state.currentIndex!) newCurrent = state.currentIndex! - 1;
+      if (idx == state.currentIndex) newCurrent = (list.isEmpty) ? null : idx.clamp(0, list.length - 1);
+    }
+    state = state.copyWith(playlist: list, currentIndex: newCurrent);
+    if (newCurrent != null) {
+      // Autoplay next if we removed the current
+      playAt(newCurrent);
+    }
   }
 }
 

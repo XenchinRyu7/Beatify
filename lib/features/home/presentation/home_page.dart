@@ -6,6 +6,8 @@ import '../../../core/theme/app_theme.dart';
 import '../../../widgets/glassmorphism_container.dart';
 import '../../../widgets/mini_player.dart';
 import '../../player/application/player_controller.dart';
+import '../application/library_controller.dart';
+import 'search_page.dart';
 import '../../player/presentation/player_page.dart';
 
 class HomePage extends ConsumerStatefulWidget {
@@ -21,23 +23,30 @@ class _HomePageState extends ConsumerState<HomePage> {
     super.initState();
     Future.microtask(() async {
       await ref.read(audioPlayerServiceProvider).init();
-      await ref.read(playerControllerProvider.notifier).load();
+      await ref.read(libraryControllerProvider.notifier).load();
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(playerControllerProvider);
+    final library = ref.watch(libraryControllerProvider);
+    final query = ref.watch(librarySearchQueryProvider);
+    final filtered = query.isEmpty
+        ? library
+        : library.where((s) => s.title.toLowerCase().contains(query.toLowerCase()) || s.artist.toLowerCase().contains(query.toLowerCase())).toList();
 
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const Text('Beatify'),
-        actions: const [
-          Padding(
-            padding: EdgeInsets.only(right: 12),
-            child: Icon(PhosphorIconsLight.magnifyingGlass),
-          )
+        actions: [
+          IconButton(
+            icon: const Icon(PhosphorIconsLight.magnifyingGlass),
+            onPressed: () {
+              Navigator.of(context).push(_fadeRoute(const SearchPage()));
+            },
+          ),
+          const SizedBox(width: 6),
         ],
       ),
       body: Stack(
@@ -55,17 +64,18 @@ class _HomePageState extends ConsumerState<HomePage> {
                   mainAxisSpacing: 14,
                   childAspectRatio: 0.82,
                 ),
-                itemCount: state.playlist.length,
+                itemCount: filtered.length,
                 itemBuilder: (context, index) {
-                  final song = state.playlist[index];
+                  final song = filtered[index];
                   return GestureDetector(
                     onTap: () async {
-                      await ref.read(playerControllerProvider.notifier).playAt(index);
+                      final baseList = filtered;
+                      ref.read(playerControllerProvider.notifier).setPlaylist(baseList, startIndex: index);
                       if (!mounted) return;
                       Navigator.of(context).push(_fadeRoute(const PlayerPage()));
                     },
                     child: GlassmorphismContainer(
-                      padding: const EdgeInsets.all(10),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                       borderRadius: 20,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -126,6 +136,35 @@ class _HomePageState extends ConsumerState<HomePage> {
       pageBuilder: (_, __, ___) => page,
       transitionsBuilder: (_, animation, __, child) => FadeTransition(opacity: animation, child: child),
     );
+  }
+}
+
+class _SongSearchDelegate extends SearchDelegate<String?> {
+  _SongSearchDelegate({String? initial}) {
+    query = initial ?? '';
+  }
+
+  @override
+  List<Widget>? buildActions(BuildContext context) {
+    return [
+      IconButton(onPressed: () => query = '', icon: const Icon(Icons.clear))
+    ];
+  }
+
+  @override
+  Widget? buildLeading(BuildContext context) {
+    return IconButton(onPressed: () => close(context, null), icon: const Icon(Icons.arrow_back));
+  }
+
+  @override
+  Widget buildResults(BuildContext context) {
+    close(context, query);
+    return const SizedBox.shrink();
+  }
+
+  @override
+  Widget buildSuggestions(BuildContext context) {
+    return const SizedBox.shrink();
   }
 }
 

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../player/application/player_controller.dart';
+import '../../../services/overrides_service.dart';
 
 class PlayerPage extends ConsumerWidget {
   const PlayerPage({super.key});
@@ -41,7 +42,10 @@ class PlayerPage extends ConsumerWidget {
                       const Spacer(),
                       const Text('Now Playing'),
                       const Spacer(),
-                      const SizedBox(width: 48),
+                      IconButton(
+                        icon: const Icon(PhosphorIconsLight.dotsThreeOutlineVertical),
+                        onPressed: () => _showPlayerMenu(context, ref, song),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 20),
@@ -69,7 +73,7 @@ class PlayerPage extends ConsumerWidget {
                   Column(
                     children: [
                       Slider(
-                        value: _progressValue(state),
+                        value: _clamp01(_progressValue(state)),
                         onChanged: (v) => controller.seek(v),
                       ),
                       Row(
@@ -140,11 +144,186 @@ class PlayerPage extends ConsumerWidget {
     return state.position.inMilliseconds / total;
   }
 
+  double _clamp01(double v) {
+    if (v.isNaN || !v.isFinite) return 0;
+    if (v < 0) return 0;
+    if (v > 1) return 1;
+    return v;
+  }
+
   String _formatDuration(Duration d) {
     String two(int n) => n.toString().padLeft(2, '0');
     final minutes = two(d.inMinutes.remainder(60));
     final seconds = two(d.inSeconds.remainder(60));
     return '$minutes:$seconds';
+  }
+
+  Future<String?> _promptText(BuildContext context, String title, String initial) async {
+    final ctrl = TextEditingController(text: initial);
+    return showDialog<String>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(title),
+        content: TextField(controller: ctrl, autofocus: true),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')),
+          TextButton(onPressed: () => Navigator.pop(context, ctrl.text), child: const Text('Simpan')),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showSleepTimer(BuildContext context) async {
+    Duration? picked;
+    await showModalBottomSheet(
+      context: context,
+      builder: (_) {
+        return StatefulBuilder(builder: (context, setState) {
+          Duration temp = picked ?? const Duration(minutes: 15);
+          return Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Timer tidur'),
+                Slider(
+                  min: 5,
+                  max: 120,
+                  value: temp.inMinutes.toDouble(),
+                  label: '${temp.inMinutes} menit',
+                  onChanged: (v) => setState(() => temp = Duration(minutes: v.toInt())),
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')),
+                    ElevatedButton(
+                      onPressed: () {
+                        picked = temp;
+                        Navigator.pop(context);
+                      },
+                      child: const Text('Setel'),
+                    )
+                  ],
+                )
+              ],
+            ),
+          );
+        });
+      },
+    );
+    if (picked != null) {
+      // TODO: Integrate with a timer to pause playback after duration
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Timer tidur: ${picked!.inMinutes} menit')));
+      }
+    }
+  }
+
+  void _showPlayerMenu(BuildContext context, WidgetRef ref, dynamic song) {
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      builder: (_) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(PhosphorIconsLight.moon),
+                title: const Text('Timer tidur'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final presets = [10, 20, 30, 60, 120, 240];
+                  int? chosen;
+                  await showModalBottomSheet(
+                    context: context,
+                    builder: (_) => SafeArea(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          for (final m in presets)
+                            ListTile(
+                              title: Text('$m menit'),
+                              onTap: () {
+                                chosen = m;
+                                Navigator.pop(context);
+                              },
+                            ),
+                          ListTile(
+                            leading: const Icon(PhosphorIconsLight.clock),
+                            title: const Text('Custom...'),
+                            onTap: () async {
+                              Navigator.pop(context);
+                              final v = await _promptText(context, 'Custom (menit)', '30');
+                              if (v != null) chosen = int.tryParse(v);
+                            },
+                          )
+                        ],
+                      ),
+                    ),
+                  );
+                  if (chosen != null) {
+                    ref.read(audioPlayerServiceProvider).scheduleSleep(Duration(minutes: chosen!));
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Timer tidur diatur: $chosen menit')));
+                    }
+                  }
+                },
+              ),
+              ListTile(
+                leading: const Icon(PhosphorIconsLight.pencilSimple),
+                title: const Text('Ubah info lagu'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  if (song == null) return;
+                  final titleCtrl = TextEditingController(text: song.title);
+                  final artistCtrl = TextEditingController(text: song.artist);
+                  final res = await showDialog<bool>(
+                    context: context,
+                    builder: (_) => AlertDialog(
+                      title: const Text('Ubah info lagu'),
+                      content: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          TextField(controller: titleCtrl, decoration: const InputDecoration(labelText: 'Judul')),
+                          TextField(controller: artistCtrl, decoration: const InputDecoration(labelText: 'Artis')),
+                        ],
+                      ),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Batal')),
+                        ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('Simpan')),
+                      ],
+                    ),
+                  );
+                  if (res == true) {
+                    final newTitle = titleCtrl.text.trim();
+                    final newArtist = artistCtrl.text.trim();
+                    if (newTitle.isNotEmpty) {
+                      await OverridesService.instance.setTitleOverride(song.id, newTitle);
+                      ref.read(playerControllerProvider.notifier).updateTitle(song.id, newTitle);
+                    }
+                    if (newArtist.isNotEmpty) {
+                      await OverridesService.instance.setArtistOverride(song.id, newArtist);
+                      ref.read(playerControllerProvider.notifier).updateArtist(song.id, newArtist);
+                    }
+                  }
+                },
+              ),
+              ListTile(
+                leading: const Icon(PhosphorIconsLight.trash),
+                title: const Text('Hapus dari antrian'),
+                onTap: () {
+                  Navigator.pop(context);
+                  if (song == null) return;
+                  ref.read(playerControllerProvider.notifier).removeFromQueue(song.id);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 }
 
@@ -165,13 +344,32 @@ class _UpNextSheet extends ConsumerWidget {
           onReorder: controller.reorder,
           itemBuilder: (context, index) {
             final s = state.playlist[index];
-            return ListTile(
+            final isCurrent = state.currentIndex == index;
+            return Dismissible(
+              key: ValueKey('dismiss-${s.id}'),
+              direction: DismissDirection.endToStart,
+              background: Container(
+                color: Colors.redAccent,
+                alignment: Alignment.centerRight,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: const Icon(Icons.delete, color: Colors.white),
+              ),
+              onDismissed: (_) => controller.removeFromQueue(s.id),
+              child: ListTile(
               key: ValueKey(s.id),
-              leading: Text('${index + 1}'),
-              title: Text(s.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+              leading: isCurrent
+                  ? const Icon(Icons.graphic_eq)
+                  : const Icon(Icons.music_note),
+              title: Text(
+                s.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: isCurrent ? const TextStyle(fontWeight: FontWeight.w600) : null,
+              ),
               subtitle: Text(s.artist, maxLines: 1, overflow: TextOverflow.ellipsis),
               trailing: const Icon(Icons.drag_handle),
               onTap: () => controller.playAt(index),
+              ),
             );
           },
         );
