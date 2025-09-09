@@ -1,43 +1,77 @@
 version: 2.1
 
-# Define reusable orbs
-orbs:
-  flutter: circleci/flutter@1.0.0
-
 # Define jobs
 jobs:
   test:
-    executor: flutter/flutter
+    docker:
+      - image: cimg/android:2023.12.1
     steps:
       - checkout
-      - flutter/install
+      - run:
+          name: Install Flutter
+          command: |
+            cd /home/circleci
+            wget -O flutter_linux_3.16.0-stable.tar.xz https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_3.16.0-stable.tar.xz
+            tar xf flutter_linux_3.16.0-stable.tar.xz
+            echo 'export PATH="$PATH:/home/circleci/flutter/bin"' >> $BASH_ENV
+      - run:
+          name: Flutter doctor
+          command: |
+            source $BASH_ENV
+            flutter doctor
       - run:
           name: Install dependencies
-          command: flutter pub get
+          command: |
+            source $BASH_ENV
+            flutter pub get
       - run:
           name: Run tests
-          command: flutter test
+          command: |
+            source $BASH_ENV
+            flutter test
       - run:
           name: Analyze code
-          command: flutter analyze
+          command: |
+            source $BASH_ENV
+            flutter analyze
 
   build-android:
-    executor: flutter/flutter
+    docker:
+      - image: cimg/android:2023.12.1
     steps:
       - checkout
-      - flutter/install
+      - run:
+          name: Install Flutter
+          command: |
+            cd /home/circleci
+            wget -O flutter_linux_3.16.0-stable.tar.xz https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_3.16.0-stable.tar.xz
+            tar xf flutter_linux_3.16.0-stable.tar.xz
+            echo 'export PATH="$PATH:/home/circleci/flutter/bin"' >> $BASH_ENV
+      - run:
+          name: Flutter doctor
+          command: |
+            source $BASH_ENV
+            flutter doctor
       - run:
           name: Install dependencies
-          command: flutter pub get
+          command: |
+            source $BASH_ENV
+            flutter pub get
       - run:
           name: Build APK (Debug)
-          command: flutter build apk --debug
+          command: |
+            source $BASH_ENV
+            flutter build apk --debug
       - run:
           name: Build APK (Release)
-          command: flutter build apk --release
+          command: |
+            source $BASH_ENV
+            flutter build apk --release
       - run:
           name: Build App Bundle (Release)
-          command: flutter build appbundle --release
+          command: |
+            source $BASH_ENV
+            flutter build appbundle --release
       - store_artifacts:
           path: build/app/outputs/flutter-apk/
           destination: apk
@@ -46,13 +80,27 @@ jobs:
           destination: appbundle
 
   build-android-signed:
-    executor: flutter/flutter
+    docker:
+      - image: cimg/android:2023.12.1
     steps:
       - checkout
-      - flutter/install
+      - run:
+          name: Install Flutter
+          command: |
+            cd /home/circleci
+            wget -O flutter_linux_3.16.0-stable.tar.xz https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_3.16.0-stable.tar.xz
+            tar xf flutter_linux_3.16.0-stable.tar.xz
+            echo 'export PATH="$PATH:/home/circleci/flutter/bin"' >> $BASH_ENV
+      - run:
+          name: Flutter doctor
+          command: |
+            source $BASH_ENV
+            flutter doctor
       - run:
           name: Install dependencies
-          command: flutter pub get
+          command: |
+            source $BASH_ENV
+            flutter pub get
       - run:
           name: Setup keystore (if available)
           command: |
@@ -68,10 +116,14 @@ jobs:
             fi
       - run:
           name: Build signed APK
-          command: flutter build apk --release
+          command: |
+            source $BASH_ENV
+            flutter build apk --release
       - run:
           name: Build signed App Bundle
-          command: flutter build appbundle --release
+          command: |
+            source $BASH_ENV
+            flutter build appbundle --release
       - store_artifacts:
           path: build/app/outputs/flutter-apk/
           destination: signed-apk
