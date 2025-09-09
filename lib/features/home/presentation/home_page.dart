@@ -7,6 +7,7 @@ import '../../../widgets/glassmorphism_container.dart';
 import '../../../widgets/mini_player.dart';
 import '../../player/application/player_controller.dart';
 import '../application/library_controller.dart';
+import '../../../services/permission_service.dart';
 import 'search_page.dart';
 import '../../player/presentation/player_page.dart';
 
@@ -23,6 +24,8 @@ class _HomePageState extends ConsumerState<HomePage> {
     super.initState();
     Future.microtask(() async {
       await ref.read(audioPlayerServiceProvider).init();
+      // Auto request permission, then scan default music/downloads dirs
+      await PermissionService().ensureAudioPermission();
       await ref.read(libraryControllerProvider.notifier).load();
     });
   }

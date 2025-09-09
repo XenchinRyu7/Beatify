@@ -5,6 +5,7 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../../../services/library_dirs_service.dart';
 import '../../../features/player/application/player_controller.dart';
+import '../../home/application/library_controller.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
@@ -34,6 +35,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     if (!ok) ok = (await Permission.storage.request()).isGranted;
     if (!ok && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Izin diperlukan untuk membaca file musik')));
+    } else {
+      // permission granted → load library so Home gets data
+      await ref.read(libraryControllerProvider.notifier).load();
     }
   }
 
@@ -47,7 +51,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   Future<void> _scanNow() async {
-    final count = await ref.read(playerControllerProvider.notifier).load();
+    await ref.read(libraryControllerProvider.notifier).load();
+    final count = ref.read(libraryControllerProvider).length;
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Scan selesai • Ditemukan $count lagu')));
     }
@@ -59,24 +64,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
         children: [
-          const ListTile(title: Text('Library Folders')),
-          for (final p in _paths)
-            ListTile(
-              leading: const Icon(Icons.folder),
-              title: Text(p, maxLines: 1, overflow: TextOverflow.ellipsis),
-              trailing: IconButton(
-                icon: const Icon(Icons.delete_outline),
-                onPressed: () async {
-                  await _dirs.removeDirectory(p);
-                  await _load();
-                },
-              ),
-            ),
-          const Divider(),
+          const ListTile(
+            title: Text('Pemindaian Lagu'),
+            subtitle: Text('Aplikasi akan memindai otomatis saat dibuka. Gunakan tombol di bawah untuk memindai ulang.'),
+          ),
           ListTile(
-            leading: const Icon(Icons.add),
-            title: const Text('Tambah Folder'),
-            onTap: _addFolder,
+            leading: const Icon(Icons.lock_open),
+            title: const Text('Pastikan izin media diizinkan'),
+            onTap: _requestPermission,
           ),
           ListTile(
             leading: const Icon(Icons.refresh),

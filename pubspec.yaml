@@ -46,6 +46,8 @@ dependencies:
   # Gunakan file picker + preferences untuk library lokal
   file_picker: ^8.0.3
   shared_preferences: ^2.3.2
+  flutter_native_splash: ^2.4.1
+  flutter_launcher_icons: ^0.13.1
 
 dev_dependencies:
   flutter_test:
@@ -99,3 +101,20 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: assets/icons/playstore-icon.png
+  adaptive_icon_background: "#0F0F1A"
+  adaptive_icon_foreground: assets/icons/ic_launcher-web.png
+
+flutter_native_splash:
+  color: "#0F0F1A"
+  color_dark: "#0F0F1A"
+  android_12:
+    color: "#0F0F1A"
+    icon_background_color: "#0F0F1A"
+  android: true
+  ios: false
+  web: false
